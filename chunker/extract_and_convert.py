@@ -3,6 +3,7 @@
 import os
 import math
 from datetime import datetime, timedelta
+import logging
 
 import argparse
 
@@ -12,12 +13,15 @@ os.environ['GDAL_NETCDF_BOTTOMUP'] = 'NO'
 import rasterio
 from rasterio._io import RasterReader
 
-from util import log
+logger = logging.getLogger()
 
 DATE_FORMAT = '%Y%m%H%M%S'
 
 
 def open_netCDF(path, subds=''):
+    """
+    Opens a NetCDF file as a rasterio object
+    """
     p = 'NETCDF:' + path
     if subds:
         p += ':' + subds
@@ -34,13 +38,16 @@ def get_affine(affine, col, row):
     return ta
 
 
-def tile(input_path,
-         out_dir,
-         subds='',
-         s3key='',
-         base_time=datetime(1950, 01, 01, 0, 0),
-         target_cols=512,
-         target_rows=512):
+def extract(input_path,
+            out_dir,
+            subds='',
+            s3key='',
+            base_time=datetime(1950, 01, 01, 0, 0),
+            target_cols=512,
+            target_rows=512):
+    """
+    Extracts and converts tiles from NetCDF to geotiff
+    """
     base_name = os.path.splitext(os.path.basename(s3key))[0]  # Take off the extension
     with rasterio.drivers():
         with open_netCDF(input_path, subds) as dataset:
@@ -86,9 +93,8 @@ def tile(input_path,
                         wrong_way_up = dataset.read_band(i, window=read_window)
                         tile_data = numpy.flipud(wrong_way_up)
                         (data_rows, data_cols) = tile_data.shape
-                        name = "%s-%s_%d_%d" % (base_name, band_date_name, tile_row, tile_col)
-                        log("Tile (%3d, %3d)  Window: %s  " % (tile_col, tile_row, str(read_window)))
-
+                        name = '{}-{}_{}_{}'.format(base_name, band_date_name, tile_row, tile_col)
+                        logger.info('Tile (%3d, %3d)  Window: %s', (tile_col, tile_row, read_window))
                         # Find affine
                         tile_affine = get_affine(affine,
                                                  tile_col * target_cols,
@@ -115,6 +121,8 @@ def tile(input_path,
 
 
 def main():
+    logger.addHandler(logging.StreamHandler())
+    logger.setLevel(logging.INFO)
     parser = argparse.ArgumentParser(description='Converts netcdf to geotiff')
     parser.add_argument('infile', metavar='INFILE', type=str,
                         help='The input NETCDF')
@@ -123,7 +131,7 @@ def main():
     parser.add_argument('id', metavar='ID', type=str,
                         help='s3 ID')
     args = parser.parse_args()
-    tile(args.infile, './', args.subdataset, args.id)
+    extract(args.infile, './', args.subdataset, args.id)
 
 
 if __name__ == '__main__':
