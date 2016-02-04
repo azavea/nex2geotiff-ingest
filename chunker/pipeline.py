@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 Code for chunking up NEX climate data. Performs the following pipeline:
 
@@ -7,17 +9,17 @@ Code for chunking up NEX climate data. Performs the following pipeline:
 
 Note: time units is "days since 1950-01-01 00:00:00"
 """
-from util import *
-import os, re, shutil
+import argparse
+import os
+import re
+import shutil
 import tempfile
-from datetime import datetime, timedelta
-import tiler
-from boto.s3.connection import S3Connection    
+from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 
-base_time = datetime(1950, 01, 01, 0, 0)
-target_cols = 512
-target_rows = 512
+from util import *
+import tiler
+
 
 def parse_filename(path):
     name = os.path.splitext(os.path.basename(path))[0]
@@ -38,6 +40,7 @@ def parse_filename(path):
     log("Could not parse name " + name)
     return None
 
+
 def read_from_s3(s3path):
     m = re.match("""s3://([^/]+)/(.+)""", s3path)
     if m:
@@ -55,6 +58,7 @@ def read_from_s3(s3path):
         log("ERROR: cannot parse s3key " + s3path)
         return None
 
+
 def upload_to_s3(tile_dir, datatype, context, model, target_bucket):
     conn = S3Connection()
     bucket = conn.get_bucket(target_bucket)
@@ -65,16 +69,17 @@ def upload_to_s3(tile_dir, datatype, context, model, target_bucket):
         log("Uploading %s to %s" % (f, key.key))
         key.set_contents_from_filename(path)
 
+
 def process_path(s3path, target_bucket):
     (s3key, path) = read_from_s3(s3path)
-    
+
     try:
         parsed = parse_filename(s3key)
         if parsed:
             (datatype, context, model) = parsed
             tempdir = tempfile.mkdtemp()
             log("Tiling to " + tempdir)
-            tiler.tile(path, s3key, tempdir)
+            tiler.tile(path, tempdir, datatype, s3key)
             try:
                 upload_to_s3(tempdir, datatype, context, model, target_bucket)
             finally:
@@ -83,3 +88,17 @@ def process_path(s3path, target_bucket):
     finally:
         log("Deleting " + path)
         os.remove(path)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('s3url', metavar='S3URL', type=str,
+                        help='S3 url of NETCDF to load')
+    parser.add_argument('target', metavar='TARGETBUCKET', type=str,
+                        help='Name of target bucket')
+    args = parser.parse_args()
+    process_path(args.s3url, args.target)
+
+
+if __name__ == '__main__':
+    main()
