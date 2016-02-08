@@ -38,15 +38,23 @@ def get_affine(affine, col, row):
     return ta
 
 
-def extract(input_path,
-            out_dir,
-            subds='',
-            s3key='',
-            base_time=datetime(1950, 01, 01, 0, 0),
-            target_cols=512,
-            target_rows=512):
+def nex2geotiff(input_path,
+                out_dir,
+                subds='',
+                s3key='',
+                base_time=datetime(1950, 01, 01, 0, 0),
+                target_cols=512,
+                target_rows=512):
     """
     Extracts and converts tiles from NetCDF to geotiff
+
+    Arguments:
+    input_path -- the path of the NetCDF file to extract from
+    subds -- the NetCDF subdataset to extract from
+    s3key -- the S3 key the NetCDF is from, to be embedded in the metadata
+    base_time -- time from which NetCDF time tag starts counting from
+    target_cols - width of target tile size
+    target_rows - height of target tile size
     """
     base_name = os.path.splitext(os.path.basename(s3key))[0]  # Take off the extension
     with rasterio.drivers():
@@ -94,7 +102,8 @@ def extract(input_path,
                         tile_data = numpy.flipud(wrong_way_up)
                         (data_rows, data_cols) = tile_data.shape
                         name = '{}-{}_{}_{}'.format(base_name, band_date_name, tile_row, tile_col)
-                        logger.info('Tile (%3d, %3d)  Window: %s', (tile_col, tile_row, read_window))
+                        logger.info('Tile (%3d, %3d)  Window: %s', (tile_col, tile_row,
+                                                                    read_window))
                         # Find affine
                         tile_affine = get_affine(affine,
                                                  tile_col * target_cols,
@@ -108,7 +117,8 @@ def extract(input_path,
                         tile_meta['transform'] = tile_affine
                         tile_meta['COMPRESS'] = 'DEFLATE'
 
-                        with rasterio.open(os.path.join(out_dir, name + '.tif'), 'w', **tile_meta) as dst:
+                        with rasterio.open(os.path.join(out_dir, name + '.tif'),
+                                           'w', **tile_meta) as dst:
                             tile_tags = [
                                 ("ISO_TIME", band_date.isoformat()),
                                 ("ORIGIN", s3key),
@@ -116,7 +126,8 @@ def extract(input_path,
                                 ("TILE_COL", tile_col),
                                 ("TILE_ROW", tile_row)]
 
-                            dst.update_tags(**dict(dataset.tags().items() + tags.items() + tile_tags))
+                            dst.update_tags(**dict(dataset.tags().items() +
+                                                   tags.items() + tile_tags))
                             dst.write_band(1, tile_data)
 
 
@@ -131,7 +142,7 @@ def main():
     parser.add_argument('id', metavar='ID', type=str,
                         help='s3 ID')
     args = parser.parse_args()
-    extract(args.infile, './', args.subdataset, args.id)
+    nex2geotiff(args.infile, './', args.subdataset, args.id)
 
 
 if __name__ == '__main__':

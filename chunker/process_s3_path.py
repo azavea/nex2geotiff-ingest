@@ -18,7 +18,7 @@ import logging
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 
-from extract_and_convert import extract
+from nex2geotiff import nex2geotiff
 
 logger = logging.getLogger()
 
@@ -95,7 +95,7 @@ def process_path(s3path, target_bucket):
             (datatype, context, model) = parsed
             tempdir = tempfile.mkdtemp()
             logger.info('Tiling to %s', tempdir)
-            extract(path, tempdir, datatype, s3key)
+            nex2geotiff(path, tempdir, datatype, s3key)
             try:
                 upload_to_s3(tempdir, datatype, context, model, target_bucket)
             finally:
