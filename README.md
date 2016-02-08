@@ -1,4 +1,4 @@
-# nex2geotiff-injest
+# nex2geotiff-ingest
 
 Moves NETCDF data in s3 to another s3 bucket.
 
