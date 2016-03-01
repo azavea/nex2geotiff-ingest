@@ -5,3 +5,6 @@
 # Editors
 # vim
 *.swp
+
+# Data
+*.nc

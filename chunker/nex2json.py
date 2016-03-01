@@ -60,7 +60,7 @@ def get_window(affine, x, y, height):
 def nex2json(input_path,
              out_dir,
              subds='',
-             s3key='',
+             output_basename='',
              model='',
              base_time=datetime(1950, 1, 1)):
     """
@@ -69,7 +69,7 @@ def nex2json(input_path,
     Arguments:
     input_path -- the path of the NetCDF file to extract from
     subds -- the NetCDF subdataset to extract from
-    s3key -- the S3 key the NetCDF is from, to be embedded in the metadata
+    output_basename -- the base name of the output file
     model -- name of model
     base_time -- base time of the model
     """
@@ -102,7 +102,7 @@ def nex2json(input_path,
                     tile_data = numpy.flipud(wrong_way_up)
                     citydata['{}_{}'.format(subds, model)][band_date_name] = float(tile_data[0][0])
                 output['{}, {}'.format(name, admin)] = citydata
-    with open('{}/{}.json'.format(out_dir, s3key), 'w') as f:
+    with open('{}/{}.json'.format(out_dir, output_basename), 'w') as f:
         json.dump(output, f)
 
 
